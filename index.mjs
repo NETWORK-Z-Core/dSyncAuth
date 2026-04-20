@@ -6,6 +6,136 @@ function generateRandomString() {
 }
 
 export default class dSyncAuth {
+    constructor(app, dSyncSign, onVerify, onLogin) {
+        this.authAttempts = new Map();
+        this.signer = dSyncSign;
+
+        this.onVerify = typeof onVerify === "function" ? onVerify : null;
+        this.onLogin = typeof onLogin === "function" ? onLogin : null;
+
+        this.authSessions = new Map();
+
+        if (!app) {
+            console.error("Express app is required for dSyncAuth!")
+            process.exit(0)
+        }
+
+        if (!dSyncSign) {
+            console.error("dSyncSign is required for dSyncAuth!")
+            process.exit(0)
+        }
+
+        app.post(`/dSyncAuth/challenge`, express.json(), async (req, res) => {
+            const {challenge} = req.body
+
+            if (!challenge) {
+                res.status(400).json({error: "Missing challenge"})
+                return
+            }
+
+            try {
+                let solution = await this.signer.decrypt(challenge)
+                res.status(200).json({solution, publicKey: this.signer.publicKey})
+            } catch (err) {
+                res.status(400).json({error: "Failed to solve challenge"})
+            }
+        })
+
+        // verify decrypted random string
+        app.post(`/dSyncAuth/login`, express.json(), async (req, res) => {
+            const {publicKey} = req.body
+            if (!publicKey) return res.status(400).json({error: "Missing public key"})
+
+            let {identifier, challenge, challengeString} = await dSyncAuth.createChallenge(this.signer, publicKey)
+
+            let data = {publicKey, identifier, challenge, challengeString}
+            this.authAttempts.set(identifier, JSON.stringify(data));
+            setTimeout(() => {
+                this.authAttempts.delete(identifier)
+            }, 10_000)
+
+            res.status(200).json({identifier, challenge})
+            if (this.onLogin) this.onLogin({challenge, publicKey})
+        })
+
+        app.post(`/dSyncAuth/verify`, express.json(), async (req, res) => {
+            const {identifier, solution, publicKey} = req.body
+            if (!identifier) return res.status(400).json({error: "Missing identifier"})
+            if (!solution) return res.status(400).json({error: "Missing solution"})
+
+            let result = dSyncAuth.verifyChallenge(this.authAttempts, identifier, solution, publicKey)
+
+            if (result.valid) {
+                let session = dSyncAuth.createSession(this.authSessions, result.publicKey, 24)
+
+                if (this.onVerify) this.onVerify({
+                    valid: true,
+                    identifier,
+                    solution,
+                    publicKey: result.publicKey,
+                    sessionId: session.sessionId,
+                    expiresAt: session.expiresAt
+                })
+
+                return res.status(200).json({
+                    error: null,
+                    sessionId: session.sessionId,
+                    expiresAt: session.expiresAt
+                })
+            }
+
+            if (this.onVerify) this.onVerify({valid: false, identifier, solution, publicKey})
+            res.status(result.error === "Challenge not found" ? 404 : 403).json({error: result.error})
+        })
+    }
+
+    static createSession(authSessions, publicKey, sessionDurationHours = 24) {
+        let sessionId = randomUUID();
+        let createdAt = Date.now();
+        let expiresAt = createdAt + (Number(sessionDurationHours || 24) * 60 * 60 * 1000);
+
+        let data = {
+            sessionId,
+            publicKey,
+            createdAt,
+            expiresAt
+        };
+
+        authSessions.set(sessionId, JSON.stringify(data));
+
+        setTimeout(() => {
+            authSessions.delete(sessionId);
+        }, Math.max(0, expiresAt - Date.now()));
+
+        return data;
+    }
+
+    static getSession(authSessions, sessionId) {
+        if (!sessionId) return null;
+
+        let data = authSessions.get(sessionId);
+        if (!data) return null;
+
+        let parsed = JSON.parse(data);
+        if (!parsed?.expiresAt || parsed.expiresAt <= Date.now()) {
+            authSessions.delete(sessionId);
+            return null;
+        }
+
+        return parsed;
+    }
+
+    static verifySession(authSessions, sessionId, publicKey = null) {
+        let session = dSyncAuth.getSession(authSessions, sessionId);
+        if (!session) return { valid: false };
+
+        if (publicKey && session.publicKey !== publicKey) {
+            return { valid: false };
+        }
+
+        return { valid: true, publicKey: session.publicKey };
+    }
+
     static encodeToBase64(jsonString) {
         return btoa(encodeURIComponent(jsonString));
     }
@@ -78,77 +208,6 @@ export default class dSyncAuth {
         if (returnedKey !== normalizedKey) throw new Error("publicKey mismatch");
 
         return true;
-    }
-
-    constructor(app, dSyncSign, onVerify, onLogin) {
-        this.authAttempts = new Map();
-        this.signer = dSyncSign;
-
-        this.onVerify = typeof onVerify === "function" ? onVerify : null;
-        this.onLogin = typeof onLogin === "function" ? onLogin : null;
-
-
-        if (!app) {
-            console.error("Express app is required for dSyncAuth!")
-            process.exit(0)
-        }
-
-        if (!dSyncSign) {
-            console.error("dSyncSign is required for dSyncAuth!")
-            process.exit(0)
-        }
-
-
-        app.use(express.json())
-
-        app.post(`/dSyncAuth/challenge`, express.json(), async (req, res) => {
-            const {challenge} = req.body
-
-            if (!challenge) {
-                res.status(400).json({error: "Missing challenge"})
-                return
-            }
-
-            try {
-                let solution = await this.signer.decrypt(challenge)
-                res.status(200).json({solution, publicKey: this.signer.publicKey})
-            } catch (err) {
-                res.status(400).json({error: "Failed to solve challenge"})
-            }
-        })
-
-        // verify decrypted random string
-        app.post(`/dSyncAuth/login`, express.json(), async (req, res) => {
-            const {publicKey} = req.body
-            if (!publicKey) return res.status(400).json({error: "Missing public key"})
-
-            let {identifier, challenge, challengeString} = await dSyncAuth.createChallenge(this.signer, publicKey)
-
-            let data = {publicKey, identifier, challenge, challengeString}
-            this.authAttempts.set(identifier, JSON.stringify(data));
-            setTimeout(() => {
-                this.authAttempts.delete(identifier)
-            }, 10_000)
-
-            res.status(200).json({identifier, challenge})
-            if (this.onLogin) this.onLogin({challenge, publicKey})
-        })
-
-        app.post(`/dSyncAuth/verify`, express.json(), async (req, res) => {
-            const {identifier, solution, publicKey} = req.body
-            if (!identifier) return res.status(400).json({error: "Missing identifier"})
-            if (!solution) return res.status(400).json({error: "Missing solution"})
-
-            let result = dSyncAuth.verifyChallenge(this.authAttempts, identifier, solution, publicKey)
-
-            if (result.valid) {
-                if (this.onVerify) this.onVerify({valid: true, identifier, solution, publicKey: result.publicKey})
-                return res.status(200).json({error: null})
-            }
-
-            if (this.onVerify) this.onVerify({valid: false, identifier, solution, publicKey})
-            res.status(result.error === "Challenge not found" ? 404 : 403).json({error: result.error})
-        })
     }
 
     static isValidProof(challenge, solution, difficulty) {
