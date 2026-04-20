@@ -1,6 +1,6 @@
 import express from "express"
 import {randomUUID, randomBytes, createHash} from "crypto"
-import {DateTools} from "@hackthedev/datetools"
+import DateTools from "@hackthedev/datetools"
 
 function generateRandomString() {
     return (Math.random().toString(36).slice(2)) + (Math.random().toString(36).slice(2))
