@@ -1,5 +1,5 @@
 import express from "express"
-import { randomUUID, randomBytes, createHash } from "crypto"
+import {randomUUID, randomBytes, createHash} from "crypto"
 
 function generateRandomString() {
     return (Math.random().toString(36).slice(2)) + (Math.random().toString(36).slice(2))
@@ -127,13 +127,13 @@ export default class dSyncAuth {
 
     static verifySession(authSessions, sessionId, publicKey = null) {
         let session = dSyncAuth.getSession(authSessions, sessionId);
-        if (!session) return { valid: false };
+        if (!session) return {valid: false};
 
         if (publicKey && session.publicKey !== publicKey) {
-            return { valid: false };
+            return {valid: false};
         }
 
-        return { valid: true, publicKey: session.publicKey };
+        return {valid: true, publicKey: session.publicKey};
     }
 
     static encodeToBase64(jsonString) {
@@ -196,6 +196,7 @@ export default class dSyncAuth {
         try {
             data = await res.json();
         } catch {
+            
         }
 
         if (!res.ok) throw new Error(data?.error || "challenge request failed");
@@ -225,7 +226,10 @@ export default class dSyncAuth {
         let bits = 0
         for (let char of hash) {
             let nibble = parseInt(char, 16)
-            if (nibble === 0) { bits += 4; continue }
+            if (nibble === 0) {
+                bits += 4;
+                continue
+            }
             if (nibble < 2) bits += 3
             else if (nibble < 4) bits += 2
             else if (nibble < 8) bits += 1
@@ -237,14 +241,14 @@ export default class dSyncAuth {
     static estimatePoWDuration(difficulty, hashRate = 18535) {
         let expectedTries = Math.pow(2, 4 * difficulty)
         let estimatedSeconds = Math.round(expectedTries / hashRate)
-        return { hashRate, expectedTries, estimatedSeconds }
+        return {hashRate, expectedTries, estimatedSeconds}
     }
 
     // instance methods
     createPowChallenge(difficulty) {
         let diff = difficulty || 5
         let challenge = randomBytes(16).toString("hex")
-        return { challenge, difficulty: diff }
+        return {challenge, difficulty: diff}
     }
 
     waitForPow(challenge, difficulty, timeoutSeconds) {
@@ -267,15 +271,15 @@ export default class dSyncAuth {
         })
 
         promise.verify = (solution) => {
-            if (done) return { valid: false, error: "expired" }
+            if (done) return {valid: false, error: "expired"}
 
             let result = dSyncAuth.isValidProof(challenge, solution, diff)
             if (result.valid) {
                 done = true
-                _resolve({ valid: true, challenge, solution })
-                return { valid: true }
+                _resolve({valid: true, challenge, solution})
+                return {valid: true}
             }
-            return { valid: false, level: result.level, required: result.required }
+            return {valid: false, level: result.level, required: result.required}
         }
 
         return promise
