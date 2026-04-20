@@ -66,7 +66,7 @@ export default class dSyncAuth {
             let result = dSyncAuth.verifyChallenge(this.authAttempts, identifier, solution, publicKey)
 
             if (result.valid) {
-                let session = dSyncAuth.createSession(this.authSessions, result.publicKey, 24)
+                let session = dSyncAuth.createSession(this.authSessions, result.publicKey, 24 * 30)
 
                 if (this.onVerify) this.onVerify({
                     valid: true,
@@ -196,7 +196,7 @@ export default class dSyncAuth {
         try {
             data = await res.json();
         } catch {
-            
+
         }
 
         if (!res.ok) throw new Error(data?.error || "challenge request failed");
