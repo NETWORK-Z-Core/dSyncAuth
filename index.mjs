@@ -58,6 +58,26 @@ export default class dSyncAuth {
             if (this.onLogin) this.onLogin({challenge, publicKey})
         })
 
+        app.post(`/dSyncAuth/verify/session`, express.json(), async (req, res) => {
+            const {sessionId, publicKey} = req.body
+            if (!sessionId) return res.status(400).json({error: "Missing sessionId"})
+
+            let result = dSyncAuth.verifySession(this.authSessions, sessionId, publicKey)
+
+            if (!result.valid) {
+                return res.status(401).json({error: "Invalid session"})
+            }
+
+            let session = dSyncAuth.getSession(this.authSessions, sessionId)
+
+            return res.status(200).json({
+                error: null,
+                valid: true,
+                publicKey: result.publicKey,
+                expiresAt: session?.expiresAt ?? null
+            })
+        })
+
         app.post(`/dSyncAuth/verify`, express.json(), async (req, res) => {
             const {identifier, solution, publicKey} = req.body
             if (!identifier) return res.status(400).json({error: "Missing identifier"})
