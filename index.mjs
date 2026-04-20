@@ -1,5 +1,6 @@
 import express from "express"
 import {randomUUID, randomBytes, createHash} from "crypto"
+import {DateTools} from "@hackthedev/datetools"
 
 function generateRandomString() {
     return (Math.random().toString(36).slice(2)) + (Math.random().toString(36).slice(2))
@@ -112,7 +113,7 @@ export default class dSyncAuth {
     static createSession(authSessions, publicKey, sessionDurationHours = 24) {
         let sessionId = randomUUID();
         let createdAt = Date.now();
-        let expiresAt = createdAt + (Number(sessionDurationHours || 24) * 60 * 60 * 1000);
+        let expiresAt = DateTools.getDateFromOffset("30 days").getTime();
 
         let data = {
             sessionId,
@@ -122,16 +123,6 @@ export default class dSyncAuth {
         };
 
         authSessions.set(sessionId, JSON.stringify(data));
-
-        const maxTimeout = 2_147_483_647;
-        const delay = Math.max(0, expiresAt - Date.now());
-
-        if (delay < maxTimeout) {
-            setTimeout(() => {
-                authSessions.delete(sessionId);
-            }, delay);
-        }
-
         return data;
     }
 
