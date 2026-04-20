@@ -123,9 +123,14 @@ export default class dSyncAuth {
 
         authSessions.set(sessionId, JSON.stringify(data));
 
-        setTimeout(() => {
-            authSessions.delete(sessionId);
-        }, Math.max(0, expiresAt - Date.now()));
+        const maxTimeout = 2_147_483_647;
+        const delay = Math.max(0, expiresAt - Date.now());
+
+        if (delay < maxTimeout) {
+            setTimeout(() => {
+                authSessions.delete(sessionId);
+            }, delay);
+        }
 
         return data;
     }
