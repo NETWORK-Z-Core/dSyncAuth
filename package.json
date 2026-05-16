@@ -9,6 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "url": "https://github.com/NETWORK-Z-Dev/dSyncAuth"
+  },
   "dependencies": {
     "@hackthedev/datetools": "^1.0.3",
     "@hackthedev/dsync-auth": "1.0.17",
