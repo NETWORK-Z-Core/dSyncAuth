@@ -34,7 +34,7 @@ export default class dSyncAuth {
         }
 
         app.use("/dSyncAuth", cors(corsOptions))
-        app.options("/dSyncAuth/*", cors(corsOptions))
+        app.options(/^\/dSyncAuth(\/.*)?$/, cors(corsOptions))
 
         app.post(`/dSyncAuth/challenge`, express.json(), async (req, res) => {
             const {challenge} = req.body
