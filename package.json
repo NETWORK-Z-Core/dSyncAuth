@@ -13,6 +13,7 @@
     "@hackthedev/datetools": "^1.0.3",
     "@hackthedev/dsync-auth": "1.0.17",
     "@hackthedev/dsync-sign": "^1.0.15",
+    "cors": "^2.8.6",
     "express": "^5.2.1"
   }
 }
