@@ -30,3 +30,4 @@ const auther = new dSyncAuth(app, signer, async function(data) {
 });
 ```
 
+ 
