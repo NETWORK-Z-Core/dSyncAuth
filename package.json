@@ -1,6 +1,6 @@
 {
   "name": "@hackthedev/dsync-auth",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "",
   "main": "index.mjs",
   "scripts": {
