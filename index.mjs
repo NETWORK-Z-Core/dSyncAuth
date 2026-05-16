@@ -27,7 +27,16 @@ export default class dSyncAuth {
             process.exit(0)
         }
 
-        app.post(`/dSyncAuth/challenge`, cors(), express.json(), async (req, res) => {
+        const corsOptions = {
+            origin: "*",
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "sessionid", "publickey"]
+        }
+
+        app.use("/dSyncAuth", cors(corsOptions))
+        app.options("/dSyncAuth/*", cors(corsOptions))
+
+        app.post(`/dSyncAuth/challenge`, express.json(), async (req, res) => {
             const {challenge} = req.body
 
             if (!challenge) {
@@ -44,7 +53,7 @@ export default class dSyncAuth {
         })
 
         // verify decrypted random string
-        app.post(`/dSyncAuth/login`, cors(), express.json(), async (req, res) => {
+        app.post(`/dSyncAuth/login`, express.json(), async (req, res) => {
             const {publicKey} = req.body
             if (!publicKey) return res.status(400).json({error: "Missing public key"})
 
@@ -60,7 +69,7 @@ export default class dSyncAuth {
             if (this.onLogin) this.onLogin({challenge, publicKey})
         })
 
-        app.post(`/dSyncAuth/verify/session`, cors(), express.json(), async (req, res) => {
+        app.post(`/dSyncAuth/verify/session`, express.json(), async (req, res) => {
             const {sessionId, publicKey} = req.body
             if (!sessionId) return res.status(400).json({error: "Missing sessionId"})
 
@@ -80,7 +89,7 @@ export default class dSyncAuth {
             })
         })
 
-        app.post(`/dSyncAuth/verify`, cors(), express.json(), async (req, res) => {
+        app.post(`/dSyncAuth/verify`, express.json(), async (req, res) => {
             const {identifier, solution, publicKey} = req.body
             if (!identifier) return res.status(400).json({error: "Missing identifier"})
             if (!solution) return res.status(400).json({error: "Missing solution"})
