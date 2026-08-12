@@ -1,7 +1,7 @@
 {
   "name": "@hackthedev/dsync-auth",
   "version": "1.0.25",
-  "description": "",
+  "description": "Auth library with Proof-of-work functionality and automatic public key challenge logins.",
   "main": "index.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
